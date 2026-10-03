@@ -1,0 +1,174 @@
+-- Float / Walk-On-Air GUI
+-- For your own Roblox experience
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+
+local floating = false
+local floatY = nil
+local connection
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "FloatGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 125)
+frame.Position = UDim2.new(0.5, -110, 0.5, -60)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 14)
+corner.Parent = frame
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "☁️ Walk On Air"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 20
+title.Font = Enum.Font.GothamBold
+title.Parent = frame
+
+-- Status
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -20, 0, 25)
+status.Position = UDim2.new(0, 10, 0, 38)
+status.BackgroundTransparency = 1
+status.Text = "Status: OFF"
+status.TextColor3 = Color3.fromRGB(255, 100, 100)
+status.TextSize = 14
+status.Font = Enum.Font.Gotham
+status.Parent = frame
+
+-- Button
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -30, 0, 42)
+button.Position = UDim2.new(0, 15, 0, 75)
+button.BackgroundColor3 = Color3.fromRGB(55, 55, 75)
+button.Text = "FLOAT: OFF"
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.TextSize = 16
+button.Font = Enum.Font.GothamBold
+button.BorderSizePixel = 0
+button.Parent = frame
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 10)
+buttonCorner.Parent = button
+
+-- Float function
+local function stopFloating()
+	floating = false
+	floatY = nil
+
+	if connection then
+		connection:Disconnect()
+		connection = nil
+	end
+
+	status.Text = "Status: OFF"
+	status.TextColor3 = Color3.fromRGB(255, 100, 100)
+	button.Text = "FLOAT: OFF"
+end
+
+local function startFloating()
+	local character = player.Character
+	if not character then return end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local root = character:FindFirstChild("HumanoidRootPart")
+
+	if not humanoid or not root then return end
+
+	floating = true
+	floatY = root.Position.Y
+
+	status.Text = "Status: ON"
+	status.TextColor3 = Color3.fromRGB(100, 255, 150)
+	button.Text = "FLOAT: ON"
+
+	connection = RunService.Heartbeat:Connect(function()
+		if not floating then return end
+
+		character = player.Character
+		if not character then return end
+
+		root = character:FindFirstChild("HumanoidRootPart")
+		if not root then return end
+
+		-- Keep the player at the height where Float was enabled.
+		local position = root.Position
+		root.AssemblyLinearVelocity = Vector3.new(
+			root.AssemblyLinearVelocity.X,
+			0,
+			root.AssemblyLinearVelocity.Z
+		)
+
+		root.CFrame = CFrame.new(
+			position.X,
+			floatY,
+			position.Z
+		) * CFrame.Angles(0, root.Orientation.Y * math.pi / 180, 0)
+	end)
+end
+
+button.MouseButton1Click:Connect(function()
+	if floating then
+		stopFloating()
+	else
+		startFloating()
+	end
+end)
+
+-- Stop cleanly when character respawns
+player.CharacterAdded:Connect(function()
+	stopFloating()
+end)
+
+-- Make GUI draggable
+local dragging = false
+local dragStart
+local startPos
+
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+	end
+end)
+
+frame.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		dragging = false
+	end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+	if not dragging then return end
+
+	if input.UserInputType == Enum.UserInputType.MouseMovement
+		or input.UserInputType == Enum.UserInputType.Touch then
+
+		local delta = input.Position - dragStart
+
+		frame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
